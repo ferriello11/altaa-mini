@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  passwordHash    String
+  name            String?
+  image           String?
+  createdAt       DateTime     @default(now())
+  activeCompanyId String?
+  invites         Invite[]     @relation("InvitedBy")
+  memberships     Membership[]
+  activeCompany   Company?     @relation("ActiveCompanyRelation", fields: [activeCompanyId], references: [id])
+}
+
+model Company {
+  id          String       @id @default(cuid())
+  name        String
+  logoUrl     String?
+  createdAt   DateTime     @default(now())
+  invites     Invite[]
+  memberships Membership[]
+  usersActive User[]       @relation("ActiveCompanyRelation")
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, companyId])
+}
+
+model Invite {
+  id          String   @id @default(cuid())
+  email       String
+  token       String   @unique
+  companyId   String
+  invitedById String?
+  role        Role     @default(MEMBER)
+  accepted    Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id])
+  invitedBy   User?    @relation("InvitedBy", fields: [invitedById], references: [id])
+}
+
