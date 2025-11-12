@@ -14,10 +14,34 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U altaa_user"]
+      test: ["CMD-SHELL", "pg_isready -U altaa_user -d altaa_db"]
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - altaa-network
 
+  api:
+    build:
+      context: ./backend 
+      dockerfile: Dockerfile
+    container_name: altaa-api
+    restart: always
+    ports:
+      - '4000:4000'
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env.docker
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - altaa-network 
 volumes:
   postgres_data:
+
+networks:
+  altaa-network:
+    driver: bridge
