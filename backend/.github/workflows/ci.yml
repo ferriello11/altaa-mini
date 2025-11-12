@@ -1,0 +1,32 @@
+name: CI - Lint and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧩 Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Instalar dependências
+        run: npm ci
+        working-directory: ./backend
+
+      - name: 🧹 Rodar Lint
+        run: npm run lint
+        working-directory: ./backend
+
+      - name: 🧪 Rodar Testes
+        run: npm test
+        working-directory: ./backend
