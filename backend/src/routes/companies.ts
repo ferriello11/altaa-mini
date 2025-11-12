@@ -7,9 +7,8 @@ import { cookieName, signSession } from '../lib/jwt';
 
 const router = Router();
 
-/* ---------- POST /api/companies -----------
- * Body: { name: string, logoUrl?: string, setActive?: boolean }
- * Cria Company + Membership(OWNER) e (opcional) seta como ativa.
+/*
+ ---------- POST /api/companies -----------
  */
 const createCompanySchema = z.object({
    name: z.string().trim().min(2).max(120),
@@ -17,7 +16,6 @@ const createCompanySchema = z.object({
    setActive: z.boolean().optional().default(true),
  });
 
- // POST /creat companies — lista empresas que o usuário participa
  router.post('/', authSession, async (req, res, next) => {
   try {
     const parsed = createCompanySchema.safeParse(req.body);
@@ -28,7 +26,6 @@ const createCompanySchema = z.object({
     const { name, logoUrl, setActive } = parsed.data;
     const user = req.auth!.user;
 
-    // 🔒 Pré-checagem: o usuário já é OWNER em outra empresa?
     const alreadyOwner = await prisma.membership.findFirst({
       where: { userId: user.id, role: 'OWNER' },
       select: { id: true, companyId: true },
@@ -60,7 +57,6 @@ const createCompanySchema = z.object({
       return { company, membership, updatedUser };
     });
 
-    // Reemite cookie com activeCompanyId (se setActive=true)
     const jwt = signSession({
       sub: result.updatedUser.id,
       activeCompanyId: result.updatedUser.activeCompanyId ?? null,
@@ -85,7 +81,7 @@ const createCompanySchema = z.object({
     next(err);
   }
 });
-// GET /companies — lista empresas que o usuário participa
+
 router.get('/', authSession, async (req, res) => {
   const userId = req.auth!.user.id;
   const { skip, take, page, pageSize } = parsePagination(req.query);

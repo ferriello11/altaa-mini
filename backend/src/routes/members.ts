@@ -38,10 +38,6 @@ router.get('/:id/members',
 
 /**
  * PUT /api/company/:id/members/:memberId
- * Alterar papel — ADMIN/OWNER
- * Regras:
- * - ADMIN não pode alterar/remover OWNER
- * - Empresa nunca pode ficar sem OWNER
  */
 const updateRoleSchema = z.object({
   role: z.enum(['MEMBER','ADMIN','OWNER']),
@@ -60,23 +56,19 @@ router.put('/:id/members/:memberId',
     const parsed = updateRoleSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-    // Quer mudar para qual papel?
     const toRole = parsed.data.role;
 
-    const actingRole = req.auth!.membership!.role; // role de quem está fazendo a ação
+    const actingRole = req.auth!.membership!.role; 
 
-    // Quem está sendo alterado?
     const target = await prisma.membership.findUnique({ where: { id: memberId } });
     if (!target || target.companyId !== id) {
       return res.status(404).json({ error: 'member not found in this company' });
     }
 
-    // ADMIN não pode tocar em OWNER
     if (actingRole === 'ADMIN' && target.role === 'OWNER') {
       return res.status(403).json({ error: 'ADMIN cannot change OWNER' });
     }
 
-    // Se estamos rebaixando um OWNER, precisa garantir que não é o ÚNICO OWNER
     if (target.role === 'OWNER' && toRole !== 'OWNER') {
       const ownerCount = await prisma.membership.count({
         where: { companyId: id, role: 'OWNER' }
@@ -98,10 +90,6 @@ router.put('/:id/members/:memberId',
 
 /**
  * DELETE /api/company/:id/members/:memberId
- * Remover membro — ADMIN/OWNER
- * Regras:
- * - ADMIN não remove OWNER
- * - Empresa nunca pode ficar sem OWNER
  */
 router.delete('/:id/members/:memberId',
   authSession,
@@ -120,12 +108,10 @@ router.delete('/:id/members/:memberId',
       return res.status(404).json({ error: 'member not found in this company' });
     }
 
-    // ADMIN não pode remover OWNER
     if (actingRole === 'ADMIN' && target.role === 'OWNER') {
       return res.status(403).json({ error: 'ADMIN cannot remove OWNER' });
     }
 
-    // Impedir que a empresa fique sem OWNER
     if (target.role === 'OWNER') {
       const ownerCount = await prisma.membership.count({
         where: { companyId: id, role: 'OWNER' }

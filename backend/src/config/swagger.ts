@@ -3,23 +3,14 @@ import swaggerUi from 'swagger-ui-express';
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-/* ======================================
-   🔹 OpenAPI Registry principal
-====================================== */
 const registry = new OpenAPIRegistry();
 
-/* ======================================
-   🔐 Security Schemes
-====================================== */
 registry.registerComponent('securitySchemes', 'cookieAuth', {
   type: 'apiKey',
   in: 'cookie',
-  name: 'sid', // mesmo nome do seu SESSION_COOKIE_NAME
+  name: 'sid',
 });
 
-/* ======================================
-   🧩 Schemas comuns
-====================================== */
 const AuthUser = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -48,9 +39,6 @@ const Invite = z.object({
   expiresAt: z.string(),
 });
 
-/* ======================================
-   🧾 Schemas de requisição
-====================================== */
 const SignupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
@@ -88,9 +76,6 @@ const UpdateRoleSchema = z.object({
   role: z.enum(['MEMBER', 'ADMIN', 'OWNER']),
 });
 
-/* ======================================
-   🔧 Rotas AUTH
-====================================== */
 registry.registerPath({
   method: 'post',
   path: '/api/auth/signup',
@@ -152,9 +137,6 @@ registry.registerPath({
   },
 });
 
-/* ======================================
-   🏢 Rotas de COMPANIES
-====================================== */
 registry.registerPath({
   method: 'post',
   path: '/api/companies',
@@ -184,50 +166,16 @@ registry.registerPath({
   },
 });
 
-// 🧩 Atualizar empresa
 registry.registerPath({
-  method: "put",
-  path: "/api/company/{id}",
-  tags: ["Companies"],
-  description: "Atualiza dados da empresa ativa (somente ADMIN ou OWNER)",
-  summary: "Atualiza dados da empresa",
-  request: {
-    params: z.object({
-      id: z.string().uuid().describe("ID da empresa ativa"),
-    }),
-    body: {
-      content: {
-        "application/json": {
-          schema: UpdateCompanySchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: "Empresa atualizada com sucesso",
-      content: {
-        "application/json": {
-          schema: z.object({
-            company: z.object({
-              id: z.string(),
-              name: z.string(),
-              logoUrl: z.string().nullable(),
-            }),
-          }),
-        },
-      },
-    },
-    400: { description: "Erro de validação ou empresa inválida" },
-    403: { description: "Acesso negado (role insuficiente)" },
-  },
+  method: 'put',
+  path: '/api/company/{id}',
+  tags: ['Companies'],
+  description: 'Atualiza dados da empresa ativa (somente ADMIN ou OWNER).',
   security: [{ cookieAuth: [] }],
+  request: { body: { content: { 'application/json': { schema: UpdateCompanySchema } } } },
+  responses: { 200: { description: 'Empresa atualizada com sucesso', content: { 'application/json': { schema: Company } } } },
 });
 
-
-/* ======================================
-   🧑‍🤝‍🧑 Rotas de MEMBERS
-====================================== */
 registry.registerPath({
   method: 'get',
   path: '/api/company/{id}/members',
@@ -253,9 +201,6 @@ registry.registerPath({
   responses: { 200: { description: 'Membro atualizado', content: { 'application/json': { schema: Membership } } } },
 });
 
-/* ======================================
-   💌 Rotas de INVITE
-====================================== */
 registry.registerPath({
   method: 'post',
   path: '/api/company/{id}/invite',
@@ -271,9 +216,6 @@ registry.registerPath({
   },
 });
 
-/* ======================================
-   ❤️ Health check
-====================================== */
 registry.registerPath({
   method: 'get',
   path: '/api/health',
@@ -289,9 +231,6 @@ registry.registerPath({
   },
 });
 
-/* ======================================
-   📘 Geração do documento
-====================================== */
 const generator = new OpenApiGeneratorV31(registry.definitions);
 const openApiDoc = generator.generateDocument({
   openapi: '3.1.0',
@@ -304,9 +243,6 @@ const openApiDoc = generator.generateDocument({
   security: [{ cookieAuth: [] }],
 });
 
-/* ======================================
-   🚀 Setup Express
-====================================== */
 export function setupSwagger(app: Express) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDoc));
   console.log('📘 Swagger rodando em: http://localhost:4000/docs');

@@ -7,8 +7,6 @@ import { authSession } from '../middlewares/authSession';
 
 const router = Router();
 
-/* ---------------------------- helpers ---------------------------- */
-
 const isProd = process.env.NODE_ENV === 'production';
 
 function setSessionCookie(res: any, userId: string, activeCompanyId: string | null) {
@@ -27,7 +25,6 @@ function clearSessionCookie(res: any) {
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-/* ----------------------------- zod ------------------------------- */
 
 const authSchema = z.object({
   email: z.string().email(),
@@ -42,7 +39,6 @@ const acceptInviteSchema = z.object({
   setActive: z.boolean().optional().default(true),
 });
 
-/* ---------------------------- routes ----------------------------- */
 
 /**
  * POST /auth/signup
@@ -108,7 +104,6 @@ router.post('/logout', async (_req, res) => {
 
 /**
  * GET /auth/me
- * Retorna o usuário autenticado
  */
 router.get('/me', authSession, async (req, res) => {
   const u = req.auth!.user;
@@ -119,11 +114,6 @@ router.get('/me', authSession, async (req, res) => {
 
 /**
  * POST /auth/accept-invite
- * Exige usuário autenticado. Garante:
- * - convite existe, não expirou e não foi aceito
- * - e-mail do convite igual ao do usuário logado
- * - cria/vincula membership
- * - opcionalmente define como empresa ativa e reemite cookie
  */
 router.post('/accept-invite', authSession, async (req, res, next) => {
   try {

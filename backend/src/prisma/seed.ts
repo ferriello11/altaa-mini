@@ -7,13 +7,13 @@ const prisma = new PrismaClient();
 async function main() {
   const { faker } = await import('@faker-js/faker');
 
-  console.log('🧹 Limpando banco...');
+  console.log('Limpando banco...');
   await prisma.invite.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.company.deleteMany();
   await prisma.user.deleteMany();
 
-  console.log('✨ Criando usuários...');
+  console.log('Criando usuários...');
   const alice = await prisma.user.create({
     data: {
       email: 'alice@test.com',
@@ -38,7 +38,7 @@ async function main() {
     },
   });
 
-  console.log('🏢 Criando empresas...');
+  console.log(' Criando empresas...');
   const altaaTech = await prisma.company.create({
     data: {
       name: 'AltaaTech',
@@ -53,7 +53,7 @@ async function main() {
     },
   });
 
-  console.log('👥 Criando memberships...');
+  console.log('Criando memberships...');
   await prisma.membership.createMany({
     data: [
       { userId: alice.id, companyId: altaaTech.id, role: 'OWNER' },
@@ -62,7 +62,7 @@ async function main() {
     ],
   });
 
-  console.log('📩 Criando convite fake...');
+  console.log('Criando convite fake...');
   await prisma.invite.create({
     data: {
       email: 'carol@test.com',
@@ -74,7 +74,7 @@ async function main() {
     },
   });
 
-  console.log('🔗 Atualizando empresa ativa...');
+  console.log('Atualizando empresa ativa...');
   await prisma.user.update({
     where: { id: alice.id },
     data: { activeCompanyId: altaaTech.id },
@@ -84,7 +84,7 @@ async function main() {
     data: { activeCompanyId: tomCorp.id },
   });
 
-  console.log('✅ Seed concluído com sucesso!');
+  console.log('Seed concluído com sucesso!');
 }
 
 main()

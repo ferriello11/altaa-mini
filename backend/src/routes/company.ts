@@ -10,7 +10,6 @@ const router = Router();
 
 /**
  * GET /api/company/active
- * Retorna a empresa ativa (simples)
  */
 router.get('/active',
   authSession,
@@ -28,7 +27,6 @@ router.get('/active',
 
 /**
  * PUT /api/company/:id
- * Atualiza dados — ROLE >= ADMIN
  */
 const updateCompanySchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
@@ -38,7 +36,7 @@ const updateCompanySchema = z.object({
 router.put('/:id',
   authSession,
   companyScope,
-  requireRole('ADMIN','OWNER'),
+  requireRole('ADMIN', 'OWNER'),
   async (req, res) => {
     const { id } = req.params;
     if (id !== req.auth!.activeCompanyId) {
@@ -62,8 +60,6 @@ router.put('/:id',
 
 /**
  * DELETE /api/company/:id
- * Apenas OWNER
- * (Regra de negócio: deletar empresa é ação extrema; aqui apagamos memberships e convites em transação)
  */
 router.delete('/:id',
   authSession,
@@ -76,12 +72,10 @@ router.delete('/:id',
     }
 
     await prisma.$transaction(async (tx) => {
-      // Apaga convites e memberships antes para não violar FK
       await tx.invite.deleteMany({ where: { companyId: id } });
       await tx.membership.deleteMany({ where: { companyId: id } });
       await tx.company.delete({ where: { id } });
 
-      // Se o usuário tinha activeCompanyId = id, limpe (não reemitimos cookie aqui)
       await tx.user.updateMany({
         where: { activeCompanyId: id },
         data: { activeCompanyId: null },
@@ -94,12 +88,10 @@ router.delete('/:id',
 
 /**
  * POST /api/company/:id/invite
- * Gerar convite — ADMIN/OWNER
- * Body: { email: string; role?: 'MEMBER' | 'ADMIN'; expiresInHours?: number }
  */
 const inviteSchema = z.object({
   email: z.string().email(),
-  role: z.enum(['MEMBER','ADMIN']).optional().default('MEMBER'),
+  role: z.enum(['MEMBER', 'ADMIN']).optional().default('MEMBER'),
   expiresInHours: z.number().int().min(1).max(24 * 30).optional().default(72),
 });
 
@@ -122,7 +114,6 @@ router.post('/:id/invite',
 
       const { email, role } = parsed.data;
 
-      // verificar se já existe membership na empresa
       const normalizedEmail = email.trim().toLowerCase();
       const existingUser = await prisma.user.findUnique({
         where: { email: normalizedEmail },
@@ -142,9 +133,8 @@ router.post('/:id/invite',
         }
       }
 
-      // gerar token único
       const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 dias
+      const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
 
       const invite = await prisma.invite.create({
         data: {
@@ -157,7 +147,6 @@ router.post('/:id/invite',
         }
       });
 
-      // no desafio não há envio de e-mail, então retornamos o token
       return res.status(201).json({
         invite: {
           id: invite.id,
