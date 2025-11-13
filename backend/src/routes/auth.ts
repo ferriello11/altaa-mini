@@ -163,7 +163,7 @@ router.post('/accept-invite', authSession, async (req, res, next) => {
           data: {
             userId: user.id,
             companyId: invite.companyId,
-            role: invite.role, 
+            role: invite.role,
           },
         });
       }
@@ -193,5 +193,38 @@ router.post('/accept-invite', authSession, async (req, res, next) => {
     next(err);
   }
 });
+
+/**
+ * GET /auth/session
+ * Retorna o usuário autenticado + role da company ativa
+ */
+router.get("/session", authSession, async (req, res) => {
+  const user = req.auth!.user;
+
+  let activeRole = null;
+
+  if (user.activeCompanyId) {
+    const membership = await prisma.membership.findUnique({
+      where: {
+        userId_companyId: {
+          userId: user.id,
+          companyId: user.activeCompanyId
+        }
+      }
+    });
+
+    activeRole = membership?.role ?? null;
+  }
+
+  return res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      activeCompanyId: user.activeCompanyId ?? null,
+      activeCompanyRole: activeRole,
+    }
+  });
+});
+
 
 export default router;

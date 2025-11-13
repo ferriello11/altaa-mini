@@ -3,8 +3,15 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { get } from "@/lib/api";
 
+type User = {
+  id: string;
+  email: string;
+  activeCompanyId: string | null;
+  activeCompanyRole: "OWNER" | "ADMIN" | "MEMBER" | null;
+};
+
 type AuthContextType = {
-  user: any | null;
+  user: User | null;
   loading: boolean;
   refresh: () => Promise<void>;
 };
@@ -16,12 +23,13 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function loadUser() {
     try {
-      const res = await get<{ user: any }>("/auth/me");
+      const res = await get<{ user: User }>("/auth/session");
+
       setUser(res.user);
     } catch {
       setUser(null);

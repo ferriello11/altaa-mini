@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { get, post } from "@/lib/api";
+import { get, post, del } from "@/lib/api";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 type Member = {
   id: string;
@@ -15,18 +16,23 @@ export default function CompanyPage() {
   const params = useParams();
   const companyId = params.id as string;
 
+  const { user } = useAuth();
+
   const [members, setMembers] = useState<Member[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [error, setError] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [lastInvite, setLastInvite] = useState<any | null>(null);
 
+  // ROLE DO USER LOGADO NA EMPRESA
+  const userRole = members.find((m) => m.email === user?.email)?.role;
+
   async function loadData() {
     try {
       const res = await get<any>(`/company/${companyId}/members`);
 
       const items = res.items ?? [];
-      const company = res.company ?? [];
+      const company = res.company ?? {};
 
       const normalized: Member[] = items.map((m: any) => ({
         id: m.id,
@@ -36,7 +42,7 @@ export default function CompanyPage() {
       }));
 
       setMembers(normalized);
-      setCompanyName(company.name);
+      setCompanyName(company.name || "");
     } catch (err: any) {
       setError(err.message);
     }
@@ -60,6 +66,17 @@ export default function CompanyPage() {
     }
   }
 
+  async function handleDelete(memberId: string) {
+    if (!confirm("Tem certeza que deseja remover este membro?")) return;
+
+    try {
+      await del(`/company/${companyId}/members/${memberId}`);
+      await loadData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
   useEffect(() => {
     if (companyId) loadData();
   }, [companyId]);
@@ -79,6 +96,7 @@ export default function CompanyPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
 
+        {/* LISTA DE MEMBROS */}
         <div className="border rounded-xl shadow-sm bg-white p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Membros</h2>
 
@@ -87,30 +105,46 @@ export default function CompanyPage() {
               <p className="text-gray-500">Nenhum membro encontrado.</p>
             )}
 
-            {members.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center justify-between border rounded-lg px-4 py-3 bg-gray-50"
-              >
-                <div>
-                  <p className="font-medium">{m.name}</p>
-                  <p className="text-sm text-gray-600">{m.email}</p>
-                </div>
+            {members.map((m) => {
+              const canRemove =
+                (userRole === "OWNER" && m.role !== "OWNER") ||
+                (userRole === "ADMIN" && m.role === "MEMBER");
 
-                <span
-                  className={`px-3 py-1 rounded-md text-sm font-semibold
-                  ${
-                    m.role === "OWNER"
-                      ? "bg-purple-100 text-purple-700"
-                      : m.role === "ADMIN"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
+              return (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between border rounded-lg px-4 py-3 bg-gray-50"
                 >
-                  {m.role}
-                </span>
-              </div>
-            ))}
+                  <div>
+                    <p className="font-medium">{m.name}</p>
+                    <p className="text-sm text-gray-600">{m.email}</p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                        m.role === "OWNER"
+                          ? "bg-purple-100 text-purple-700"
+                          : m.role === "ADMIN"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {m.role}
+                    </span>
+
+                    {canRemove && (
+                      <button
+                        onClick={() => handleDelete(m.id)}
+                        className="px-3 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -123,7 +157,7 @@ export default function CompanyPage() {
             <input
               type="email"
               placeholder="E-mail do usuário"
-              className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
+              className="w-full border px-3 py-2 rounded-lg"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               required
@@ -131,7 +165,7 @@ export default function CompanyPage() {
 
             <button
               type="submit"
-              className="w-full bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition"
+              className="w-full bg-black text-white py-2 rounded-lg hover:bg-gray-800"
             >
               Enviar convite
             </button>
