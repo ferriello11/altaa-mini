@@ -113,6 +113,27 @@ router.get('/me', authSession, async (req, res) => {
 });
 
 /**
+ * GET /auth/invites
+ */
+router.get("/invites", authSession, async (req, res) => {
+  const user = req.auth!.user;
+  const invites = await prisma.invite.findMany({
+    where: { email: user.email.toLowerCase(), accepted: false },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      token: true,
+      expiresAt: true,
+      company: { select: { id: true, name: true } }
+    }
+  });
+
+  res.json({ items: invites });
+});
+
+
+/**
  * POST /auth/accept-invite
  */
 router.post('/accept-invite', authSession, async (req, res, next) => {

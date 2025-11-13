@@ -7,10 +7,16 @@ import companiesRoutes from './routes/companies';
 import companyRoutes from './routes/company';
 import membersRoutes from './routes/members';
 import companySelectRoutes from './routes/companySelect';
+import cors from 'cors';
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+}));
 
 setupSwagger(app);
 

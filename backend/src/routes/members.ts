@@ -16,17 +16,33 @@ router.get('/:id/members',
   requireRole('ADMIN','OWNER','MEMBER'),
   async (req, res) => {
     const { id } = req.params;
+
     if (id !== req.auth!.activeCompanyId) {
       return res.status(400).json({ error: 'id must match activeCompanyId' });
     }
 
+    const company = await prisma.company.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+
     const members = await prisma.membership.findMany({
       where: { companyId: id },
-      include: { user: { select: { id: true, email: true, name: true } } },
+      include: { 
+        user: { select: { id: true, email: true, name: true } }
+      },
       orderBy: { createdAt: 'asc' },
     });
 
     res.json({
+      company: {
+        id: company.id,
+        name: company.name,
+      },
       items: members.map(m => ({
         id: m.id,
         role: m.role,
