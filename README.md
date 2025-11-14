@@ -32,7 +32,16 @@ ALTAA-MINI/
 ├── docker-compose.yml ← contém APENAS o banco + seed automático
 └── README.md
 
----
+
+
+
+
+
+
+
+
+
+
 
 ------------------------------------------------------------
 
