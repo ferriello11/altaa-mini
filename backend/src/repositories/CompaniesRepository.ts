@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import { Prisma, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export class CompanyRepository {
   async findCompanyOwner(userId: string) {
