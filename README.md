@@ -3,11 +3,10 @@
 Este repositório contém a aplicação ALTAA-MINI, composta por:
 
 - Frontend (Next.js)
-- Backend (Node.js / TypeScript)
-- Banco PostgreSQL
-- Orquestração via Docker Compose
+- Backend (Node.js / TypeScript / Prisma)
+- Banco PostgreSQL (Orquestração via Docker Compose)
 
-O objetivo é disponibilizar um ambiente de desenvolvimento simples, isolado e com hot-reload funcionando em todos os serviços.
+O objetivo é disponibilizar um ambiente de desenvolvimento simples, isolado .
 
 ---
 
@@ -16,64 +15,89 @@ O objetivo é disponibilizar um ambiente de desenvolvimento simples, isolado e c
 ALTAA-MINI/
 │
 ├── backend/
-│   ├── Dockerfile
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── migrations/
 │   ├── src/
 │   ├── package.json
-│   └── .env.docker
+│   ├── tsconfig.json
+│   ├── .env           ← usado no ambiente local
 │
 ├── frontend/
-│   ├── Dockerfile
 │   ├── src/
 │   ├── package.json
-│   └── .env.docker
+│   ├── next.config.js
+│   └── .env.local
 │
-├── docker-compose.yml
+├── docker-compose.yml ← contém APENAS o banco + seed automático
 └── README.md
 
 ---
 
-## Como subir o ambiente
+------------------------------------------------------------
 
-docker compose up --build
+# Docker — Banco SOMENTE
 
----
+O Docker é utilizado apenas para subir o PostgreSQL:
 
-## Endpoints
+docker compose up -d
+
+Isso cria:
+
+✔ Container do Postgres
+✔ Volume persistente
+
+Nenhum seed ou backend roda dentro do Docker.
+
+------------------------------------------------------------
+
+# Migrations + Seed (executados localmente)
+
+Com o Docker rodando, execute:
+
+1 Rodar migrations
+cd backend
+npx prisma migrate deploy
+
+
+2 Popular com seed
+npm run seed
+
+⚠ O seed limpa o banco e insere dados de desenvolvimento.
+
+------------------------------------------------------------
+
+# Como rodar os serviços
+
+Backend:
+cd backend
+npm run dev
+
+Frontend:
+cd frontend
+npm run dev
+
+------------------------------------------------------------
+
+# Endpoints
 
 Frontend: http://localhost:3000
 Backend: http://localhost:4000
-Postgres: localhost:5433
+PostgreSQL: localhost:5433
 
----
+------------------------------------------------------------
 
-## Comandos úteis
+# Reset total do ambiente
 
-docker compose up --build
-docker compose down
+docker compose down -v
+docker volume prune -f
+docker compose up -d
+npx prisma migrate deploy
+npm run seed
 
----
+------------------------------------------------------------
 
-## Dockerfiles
 
-Frontend:
+# Fluxo de Convite
 
-FROM node:18
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npm", "run", "dev"]
-
-Backend:
-
-FROM node:18
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 4000
-CMD ["npm", "run", "dev"]
-
----
-
+Todo Convite gerado ira aparecer na aba de Convites, para aceitar basta acessar com a conta do CONVIDADO e aceitar dentro de CONVITES
