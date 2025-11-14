@@ -13,7 +13,7 @@ const router = Router();
 router.get('/:id/members',
   authSession,
   companyScope,
-  requireRole('ADMIN','OWNER','MEMBER'),
+  requireRole('ADMIN', 'OWNER', 'MEMBER'),
   async (req, res) => {
     const { id } = req.params;
 
@@ -23,7 +23,7 @@ router.get('/:id/members',
 
     const company = await prisma.company.findUnique({
       where: { id },
-      select: { id: true, name: true },
+      select: { id: true, name: true, logoUrl: true },
     });
 
     if (!company) {
@@ -32,7 +32,7 @@ router.get('/:id/members',
 
     const members = await prisma.membership.findMany({
       where: { companyId: id },
-      include: { 
+      include: {
         user: { select: { id: true, email: true, name: true } }
       },
       orderBy: { createdAt: 'asc' },
@@ -42,6 +42,7 @@ router.get('/:id/members',
       company: {
         id: company.id,
         name: company.name,
+        logoUlr: company.logoUrl,
       },
       items: members.map(m => ({
         id: m.id,
@@ -56,13 +57,13 @@ router.get('/:id/members',
  * PUT /api/company/:id/members/:memberId
  */
 const updateRoleSchema = z.object({
-  role: z.enum(['MEMBER','ADMIN','OWNER']),
+  role: z.enum(['MEMBER', 'ADMIN', 'OWNER']),
 });
 
 router.put('/:id/members/:memberId',
   authSession,
   companyScope,
-  requireRole('ADMIN','OWNER'),
+  requireRole('ADMIN', 'OWNER'),
   async (req, res) => {
     const { id, memberId } = req.params;
     if (id !== req.auth!.activeCompanyId) {
@@ -74,7 +75,7 @@ router.put('/:id/members/:memberId',
 
     const toRole = parsed.data.role;
 
-    const actingRole = req.auth!.membership!.role; 
+    const actingRole = req.auth!.membership!.role;
 
     const target = await prisma.membership.findUnique({ where: { id: memberId } });
     if (!target || target.companyId !== id) {
@@ -110,7 +111,7 @@ router.put('/:id/members/:memberId',
 router.delete('/:id/members/:memberId',
   authSession,
   companyScope,
-  requireRole('ADMIN','OWNER'),
+  requireRole('ADMIN', 'OWNER'),
   async (req, res) => {
     const { id, memberId } = req.params;
     if (id !== req.auth!.activeCompanyId) {

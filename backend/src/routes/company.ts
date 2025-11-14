@@ -5,8 +5,11 @@ import { authSession } from '../middlewares/authSession';
 import { companyScope } from '../middlewares/companyScope';
 import { requireRole } from '../middlewares/roleGuard';
 import crypto from 'crypto';
+import multer from "multer";
+import { uploadToS3 } from "../lib/s3";
 
 const router = Router();
+const upload = multer();
 
 /**
  * GET /api/company/active
@@ -37,26 +40,51 @@ router.put('/:id',
   authSession,
   companyScope,
   requireRole('ADMIN', 'OWNER'),
+  upload.single("logo"),
   async (req, res) => {
     const { id } = req.params;
+
     if (id !== req.auth!.activeCompanyId) {
       return res.status(400).json({ error: 'id must match activeCompanyId' });
     }
-    const parsed = updateCompanySchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+    let logoUrl = undefined;
+
+    if (req.file) {
+      logoUrl = await uploadToS3(req.file);
+    }
+    else if (req.body.logoUrl === undefined) {
+      logoUrl = null;
+    }
+
+    const parsed = updateCompanySchema.safeParse({
+      ...req.body,
+      logoUrl: logoUrl ?? req.body.logoUrl,
+    });
+
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.flatten() });
+    }
 
     const company = await prisma.company.update({
       where: { id },
       data: {
-        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
-        ...(parsed.data.logoUrl !== undefined ? { logoUrl: parsed.data.logoUrl } : {}),
+        name: req.body.name ?? undefined,
+        logoUrl: logoUrl,
       },
       select: { id: true, name: true, logoUrl: true },
     });
 
-    res.json({ company });
+    return res.json({
+      company: {
+        id: company.id,
+        name: company.name,
+        logoUrl: company.logoUrl
+      }
+    });
   }
 );
+
 
 /**
  * DELETE /api/company/:id
@@ -95,7 +123,8 @@ const inviteSchema = z.object({
   expiresInHours: z.number().int().min(1).max(24 * 30).optional().default(72),
 });
 
-router.post('/:id/invite',
+router.post(
+  '/:id/invite',
   authSession,
   companyScope,
   requireRole('ADMIN', 'OWNER'),
@@ -104,37 +133,65 @@ router.post('/:id/invite',
       const { id } = req.params;
 
       if (id !== req.auth!.activeCompanyId) {
-        return res.status(400).json({ error: 'id must match activeCompanyId' });
+        return res
+          .status(400)
+          .json({ error: 'id must match activeCompanyId' });
       }
 
       const parsed = inviteSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.flatten() });
+        return res
+          .status(400)
+          .json({ error: parsed.error.flatten() });
       }
 
-      const { email, role } = parsed.data;
-
+      const { email, role, expiresInHours } = parsed.data;
       const normalizedEmail = email.trim().toLowerCase();
+
       const existingUser = await prisma.user.findUnique({
         where: { email: normalizedEmail },
       });
 
       if (existingUser) {
-        const already = await prisma.membership.findUnique({
+        const alreadyMember = await prisma.membership.findUnique({
           where: {
             userId_companyId: {
               userId: existingUser.id,
-              companyId: id
-            }
-          }
+              companyId: id,
+            },
+          },
         });
-        if (already) {
-          return res.status(400).json({ error: 'user already a member of this company' });
+
+        if (alreadyMember) {
+          return res
+            .status(400)
+            .json({ error: 'user already a member of this company' });
         }
       }
 
+      const existingInvite = await prisma.invite.findFirst({
+        where: {
+          email: normalizedEmail,
+          companyId: id,
+          expiresAt: { gt: new Date() },
+        },
+      });
+
+      if (existingInvite) {
+        return res.status(200).json({
+          invite: {
+            id: existingInvite.id,
+            email: existingInvite.email,
+            role: existingInvite.role,
+            token: existingInvite.token,
+            expiresAt: existingInvite.expiresAt,
+            reused: true,
+          },
+        });
+      }
+
       const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+      const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * expiresInHours);
 
       const invite = await prisma.invite.create({
         data: {
@@ -144,7 +201,7 @@ router.post('/:id/invite',
           companyId: id,
           invitedById: req.auth!.user.id,
           expiresAt,
-        }
+        },
       });
 
       return res.status(201).json({
@@ -154,9 +211,9 @@ router.post('/:id/invite',
           role: invite.role,
           token: invite.token,
           expiresAt: invite.expiresAt,
-        }
+          reused: false,
+        },
       });
-
     } catch (err) {
       next(err);
     }

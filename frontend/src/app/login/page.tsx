@@ -22,7 +22,7 @@ export default function LoginPage() {
       await refresh();
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Erro ao fazer login");
+      setError("Usuário ou senha incorretos.");
     }
   }
 
